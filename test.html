@@ -1,0 +1,52 @@
+<!doctype HTML> <!-- DOCTYPE mal écrit (HTML en majuscules, non standard) -->
+<html lang="fr" dir="ltr" lang="en"> <!-- Attribut lang dupliqué, valeurs contradictoires -->
+<HEAD> <!-- Balise head en majuscules, non standard -->
+    <meta charset="utf8"> <!-- Charset mal écrit (utf8 au lieu de UTF-8) -->
+    <TITLE>Page Horrible</title> <!-- Balise title en majuscules, mélange de casse -->
+    <link rel="stylesheet" href="fichier-inexistant.css"> <!-- Fichier CSS inexistant -->
+    <meta name="description" content="Ceci est une page pleine d'erreurs graves"> <!-- OK, mais inutile ici -->
+    <script src="http://site-dangereux.com/script.js"></script> <!-- Script externe non sécurisé (HTTP, source douteuse) -->
+    <style>
+        body { color: bleu; } /* Couleur non valide (bleu au lieu de blue) */
+        div { margin: 10; padding: 20px /* Propriétés incomplètes, syntaxe cassée */
+        #id { font-size: 25; } /* Unités manquantes pour font-size */
+    </style>
+</head>
+<BODY onload="eval(document.URL.split('?')[1])"> <!-- Failles XSS via eval() sur URL, très dangereux -->
+    <div id="main" class="main" id="main2"> <!-- Attribut id dupliqué, illégal -->
+        <h1 style="font-size: 30px; font-size: 40px">Titre avec styles dupliqués</h1> <!-- Attribut style dupliqué -->
+        <p>Ceci est un texte <b><i>imbriqué mal fermé <!-- Balises b et i non fermées -->
+        <p>Paragraphe non fermé <!-- p non fermé -->
+        <img src="http://inconnu.com/image.jpg" alt width="200px"> <!-- Attribut alt vide, width avec unité dans l'attribut -->
+        <a href="javascript:alert('Hacked!')">Lien dangereux</a> <!-- Code JavaScript inline dangereux -->
+        <form action="http://site-pirate.com/submit" method="GET"> <!-- Formulaire envoyant à un site douteux -->
+            <input type="text" name="password" value="admin123" autocomplete="off"> <!-- Mot de passe en clair, faille de sécurité -->
+            <INPUT TYPE="submit" onclick="nonExistentFunction()"> <!-- Fonction inexistante, balise en majuscules -->
+        </form>
+        <table border="1px"> <!-- Attribut border obsolète avec unité incorrecte -->
+            <tr>
+                <td>Cellule 1
+                <td>Cellule 2</td> <!-- Balise td non fermée -->
+            </tr>
+        </table>
+        <div>
+            <script>
+                document.write('<p>Ceci est ajouté dynamiquement !</p>'); // document.write est obsolète et dangereux
+                let x = "test" + 5 + true + undefined; // Opérations absurdes
+                console.log(undefinedVar); // Variable non définie
+                while (true) { console.log('Boucle infinie'); } // Boucle infinie qui bloque le navigateur
+            </script>
+        </div>
+        <iframe src="http://site-malveillant.com"></iframe> <!-- Iframe pointant vers une source non sécurisée -->
+        <p class="class1 class2 class3=erreur">Texte avec attribut class mal formé</p> <!-- Syntaxe d'attribut invalide -->
+        <!-- Commentaire contenant du code sensible: API_KEY=12345 -->
+        <div style="display: none; visibility: visible;">Div avec styles contradictoires</div> <!-- Styles incohérents -->
+    </div>
+    <footer>
+        <p>© 2020 <!-- Symbole © mal utilisé, balise non fermée, année incorrecte -->
+        <script src="fichier-inexistant.js"></script> <!-- Script externe inexistant -->
+    </footer>
+    <body> <!-- Deuxième balise body, illégale -->
+        <p>Contenu dans un body invalide</p>
+    </body>
+</html> <!-- Balise html jamais fermée correctement -->
