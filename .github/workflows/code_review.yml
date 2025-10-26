@@ -1,0 +1,41 @@
+name: Code Review and Notification
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        # Fetch the previous commit to compare changes
+        fetch-depth: 2 
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    - name: Run Code Review Script
+      env:
+        # Pass the secrets securely to the script as environment variables
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+      run: |
+        # Get the email of the committer who made the push
+        COMMIT_AUTHOR_EMAIL=$(git log -1 --pretty=format:'%ae')
+        
+        # Determine the files that were changed in the last commit
+        CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+        
+        # Execute the Python script
+        python analyze_and_notify.py "$COMMIT_AUTHOR_EMAIL" "$CHANGED_FILES"
