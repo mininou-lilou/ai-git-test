@@ -29,7 +29,7 @@ jobs:
           echo "Erreur : requirements.txt n'existe pas dans le dépôt. Création d'un fichier temporaire."
           # Création d'un fichier temporaire pour l'installation des dépendances
           echo "google-genai" > requirements.txt
-          echo "typy" >> requirements.txt
+          echo "mypy" >> requirements.txt
         fi
 
     - name: Install dependencies
@@ -42,7 +42,7 @@ jobs:
           exit 1
         fi
 
-    - name: Run Code Review and Typy Verification Script
+    - name: Run Code Review and Mypy Verification Script
       env:
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
