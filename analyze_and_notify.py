@@ -1,6 +1,7 @@
 import os
 import sys
 import smtplib
+import subprocess
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from google import genai
@@ -31,18 +32,60 @@ def get_file_content(file_path):
     except Exception as e:
         return f"--- Impossible de lire le fichier: {file_path} (Erreur: {e}) ---\n"
 
-def generate_prompt(changed_files):
-    """Génère le prompt pour l'IA en incluant le contenu des fichiers."""
+def run_typy_verification():
+    """Exécute la vérification Typy et retourne le résultat."""
+    print("Début de la vérification Typy...")
+    try:
+        # Exécuter 'typy verify'
+        # Nous utilisons 'capture_output=True' pour récupérer stdout et stderr
+        # 'text=True' pour décoder la sortie en texte
+        result = subprocess.run(
+            ['typy', 'verify'],
+            capture_output=True,
+            text=True,
+            check=False # Ne lève pas d'exception en cas d'échec (code de retour non nul)
+        )
+        
+        # Le code de retour est 0 si tout est OK, non nul en cas d'erreur de typage
+        typy_success = result.returncode == 0
+        
+        # Combiner stdout et stderr pour le rapport complet
+        typy_report = result.stdout + result.stderr
+        
+        print(f"Vérification Typy terminée. Succès: {typy_success}")
+        
+        return typy_success, typy_report
+        
+    except FileNotFoundError:
+        # Cela ne devrait pas arriver si 'typy' est installé, mais c'est une bonne pratique
+        return False, "Erreur: La commande 'typy' n'a pas été trouvée. Assurez-vous que Typy est installé."
+    except Exception as e:
+        return False, f"Erreur inattendue lors de l'exécution de Typy: {e}"
+
+def generate_prompt(changed_files, typy_report):
+    """Génère le prompt pour l'IA en incluant le contenu des fichiers et le rapport Typy."""
+    
+    typy_section = ""
+    if typy_report:
+        typy_section = (
+            "--- Rapport de Vérification Typy ---\n"
+            f"{typy_report}\n"
+            "------------------------------------\n\n"
+        )
+        
     prompt = (
-        "Vous êtes un expert en revue de code. Votre tâche est d'analyser les changements de code suivants, "
+        "Vous êtes un expert en revue de code et en typage strict (Typy). Votre tâche est d'analyser les changements de code suivants, "
         "en vous concentrant sur la qualité, la cohérence, les erreurs potentielles et les améliorations. "
+        "**Priorité absolue :** Si le 'Rapport de Vérification Typy' ci-dessous contient des erreurs, vous devez les mettre en évidence "
+        "et expliquer clairement au développeur comment les corriger pour que le push soit accepté. "
         "Après l'analyse, vous devez générer une réponse **uniquement** sous forme de code HTML complet et esthétique "
         "pour un e-mail de feedback. L'e-mail doit être très beau, professionnel et convivial. "
-        "Si le code est impeccable, dites-le. S'il y a des erreurs ou des suggestions, mentionnez-les clairement, "
+        "Si le code est impeccable (y compris Typy), dites-le. S'il y a des erreurs ou des suggestions, mentionnez-les clairement, "
         "en indiquant les lignes si possible, et proposez des corrections. "
         "Le code HTML doit être complet (avec <html>, <body>, etc.) et utiliser des styles en ligne (CSS) "
         "pour garantir un bon affichage dans tous les clients de messagerie. Utilisez une palette de couleurs agréable (par exemple, bleu, vert, gris clair)."
         "\n\n"
+        f"{typy_section}"
         "--- Fichiers Modifiés ---\n"
     )
     
@@ -104,21 +147,40 @@ def send_email(recipient, subject, html_body):
         print("\n--- Contenu HTML non envoyé (pour débogage) ---\n")
         print(html_body)
         print("\n----------------------------------------------------\n")
+        # Nous ne levons pas d'exception ici pour ne pas bloquer le workflow
+        # si l'envoi d'email échoue après une revue réussie.
 
 # --- Logique principale ---
 
 print(f"Début de l'analyse pour le push de: {RECIPIENT_EMAIL}")
 print(f"Fichiers modifiés: {', '.join(CHANGED_FILES)}")
 
-# 1. Préparer le prompt
-review_prompt = generate_prompt(CHANGED_FILES)
+# 1. Exécuter la vérification Typy
+typy_success, typy_report = run_typy_verification()
 
-# 2. Obtenir la revue de l'IA
+# 2. Préparer le prompt pour l'IA (inclut le rapport Typy)
+review_prompt = generate_prompt(CHANGED_FILES, typy_report)
+
+# 3. Obtenir la revue de l'IA
+# Le sujet de l'email dépendra du succès de Typy
+if typy_success:
+    email_subject = "✅ Revue de Code Automatisée - Succès Typy"
+else:
+    email_subject = "❌ Revue de Code Automatisée - Échec Typy"
+
 html_review = get_ai_review(review_prompt)
-
-# 3. Déterminer le sujet de l'email
-# On pourrait utiliser une analyse plus fine, mais pour l'instant, un sujet générique suffit
-email_subject = "Revue de Code Automatisée - Push sur ai-projet-git"
 
 # 4. Envoyer l'email
 send_email(RECIPIENT_EMAIL, email_subject, html_review)
+
+# 5. Déterminer le code de sortie
+# Le script retourne le code de sortie de Typy.
+# Si Typy échoue, le script échoue, ce qui bloquera le workflow GitHub Actions.
+# C'est la méthode pour "bloquer le push" comme demandé.
+if not typy_success:
+    print("Échec de la vérification Typy. Le script va se terminer avec un code d'erreur pour bloquer le push.")
+    # Le code de retour de Typy est déjà dans le rapport, mais nous allons utiliser 1 pour une erreur générique
+    sys.exit(1)
+else:
+    print("Vérification Typy réussie. Le script va se terminer avec succès.")
+    sys.exit(0)
